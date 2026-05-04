@@ -26,7 +26,7 @@ export default async function ProgressPage() {
     console.error(e);
   }
 
-  const active = items.filter((i) => i.status !== "archived");
+  const active = items.filter((i) => i.status !== "archived" && i.status !== "deleted");
   const done = active.filter((i) => i.status === "done");
   const inProgress = active.filter((i) => i.status === "active");
   const pending = active.filter((i) => i.status === "pending");

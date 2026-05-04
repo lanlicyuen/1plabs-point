@@ -26,8 +26,9 @@ export default async function BlockersPage() {
     console.error(e);
   }
 
-  const active = items.filter((i) => i.status !== "archived" && i.status !== "done");
-  const resolved = items.filter((i) => i.status === "done");
+  const visible = items.filter((i) => i.status !== "deleted");
+  const active = visible.filter((i) => i.status !== "archived" && i.status !== "done");
+  const resolved = visible.filter((i) => i.status === "done");
 
   return (
     <div>

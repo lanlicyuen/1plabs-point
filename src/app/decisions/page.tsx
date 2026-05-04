@@ -26,8 +26,9 @@ export default async function DecisionsPage() {
     console.error(e);
   }
 
-  const active = items.filter((i) => i.status !== "archived");
-  const archived = items.filter((i) => i.status === "archived");
+  const visible = items.filter((i) => i.status !== "deleted");
+  const active = visible.filter((i) => i.status !== "archived");
+  const archived = visible.filter((i) => i.status === "archived");
 
   return (
     <div>

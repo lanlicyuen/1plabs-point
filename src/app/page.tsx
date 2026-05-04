@@ -1,5 +1,5 @@
 import { db, getTables } from "@/lib/db";
-import { desc, ne } from "drizzle-orm";
+import { and, desc, ne } from "drizzle-orm";
 import BoardColumn from "@/components/BoardColumn";
 import type { Item } from "../../drizzle/schema";
 
@@ -11,7 +11,7 @@ async function getItems(): Promise<Item[]> {
   return (db as any)
     .select()
     .from(items)
-    .where(ne(items.status, "archived"))
+    .where(and(ne(items.status, "archived"), ne(items.status, "deleted")))
     .orderBy(desc(items.pinned), desc(items.createdAt));
 }
 
@@ -27,6 +27,7 @@ export default async function HomePage() {
   }
 
   const byType = {
+    task: items.filter((i) => i.type === "task"),
     decision: items.filter((i) => i.type === "decision"),
     progress: items.filter((i) => i.type === "progress"),
     blocker: items.filter((i) => i.type === "blocker"),
@@ -38,7 +39,7 @@ export default async function HomePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Team Board</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Overview of decisions, progress, blockers, and announcements.
+          Overview of tasks, decisions, progress, blockers, and announcements.
         </p>
       </div>
 
@@ -48,7 +49,8 @@ export default async function HomePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <BoardColumn title="Tasks" type="task" items={byType.task} icon="✅" />
         <BoardColumn title="Decisions" type="decision" items={byType.decision} icon="⚖️" />
         <BoardColumn title="Progress" type="progress" items={byType.progress} icon="📊" />
         <BoardColumn title="Blockers" type="blocker" items={byType.blocker} icon="🚧" />

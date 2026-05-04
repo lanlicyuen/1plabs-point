@@ -9,6 +9,7 @@ interface BoardColumnProps {
 }
 
 const columnColors: Record<ItemType, string> = {
+  task: "border-t-amber-500",
   decision: "border-t-purple-500",
   progress: "border-t-blue-500",
   blocker: "border-t-red-500",
@@ -16,7 +17,7 @@ const columnColors: Record<ItemType, string> = {
 };
 
 export default function BoardColumn({ title, type, items, icon }: BoardColumnProps) {
-  const activeItems = items.filter((i) => i.status !== "archived");
+  const activeItems = items.filter((i) => i.status !== "archived" && i.status !== "deleted");
 
   return (
     <div className={`flex flex-col gap-3 min-w-0`}>

@@ -1,7 +1,7 @@
 /**
  * Authentication helpers.
  *
- * API Key auth:   POST / PATCH / DELETE routes check Authorization: Bearer <AGENT_API_KEY>
+ * API Key auth:   POST / PATCH / DELETE routes check Authorization: Bearer <agent key>
  * Session auth:   Browser pages use a cookie-based password session.
  *                 Disabled in local dev unless AUTH_ENABLED=true.
  */
@@ -12,18 +12,60 @@ import { NextRequest } from "next/server";
 const SESSION_COOKIE = "pp_session";
 const SESSION_VALUE = "authenticated";
 
+export type AgentAuth = {
+  agentName: string;
+};
+
 /** Returns true when login protection is active */
 export function isAuthEnabled(): boolean {
   return process.env.AUTH_ENABLED === "true";
 }
 
+function getBearerToken(req: NextRequest): string {
+  const authHeader = req.headers.get("authorization") ?? "";
+  return authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+}
+
+function getConfiguredAgentKeys(): Map<string, string> {
+  const agentKeys = new Map<string, string>();
+  const legacyKey = process.env.AGENT_API_KEY;
+
+  if (legacyKey) {
+    agentKeys.set("yaya", legacyKey);
+  }
+
+  const namedKeys: Array<[string, string | undefined]> = [
+    ["yaya", process.env.AGENT_API_KEY_YAYA],
+    ["ashe", process.env.AGENT_API_KEY_ASHE],
+    ["xiao_blue", process.env.AGENT_API_KEY_XIAO_BLUE],
+  ];
+
+  for (const [agentName, key] of namedKeys) {
+    if (key) {
+      agentKeys.set(agentName, key);
+    }
+  }
+
+  return agentKeys;
+}
+
+/** Verify the API key from an Authorization header and return the agent identity */
+export function verifyAgentApiKey(req: NextRequest): AgentAuth | null {
+  const token = getBearerToken(req);
+  if (!token) return null;
+
+  for (const [agentName, key] of getConfiguredAgentKeys()) {
+    if (token === key) {
+      return { agentName };
+    }
+  }
+
+  return null;
+}
+
 /** Verify the API key from an Authorization header */
 export function verifyApiKey(req: NextRequest): boolean {
-  const authHeader = req.headers.get("authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  const expected = process.env.AGENT_API_KEY;
-  if (!expected) return false;
-  return token === expected;
+  return verifyAgentApiKey(req) !== null;
 }
 
 /** Verify the browser password */

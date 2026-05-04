@@ -30,7 +30,7 @@ export const pgItems = pgTable("items", {
   title: varchar("title", { length: 200 }).notNull(),
   content: text("content"),
   priority: varchar("priority", { length: 10 }).default("normal"), // urgent / high / normal / low
-  status: varchar("status", { length: 20 }).default("pending"), // pending / active / done / archived
+  status: varchar("status", { length: 20 }).default("pending"), // pending / active / done / archived / deleted
   assignee: varchar("assignee", { length: 50 }),
   createdBy: varchar("created_by", { length: 50 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(
@@ -48,7 +48,7 @@ export const pgActivityLog = pgTable("activity_log", {
   itemId: uuid("item_id").references(() => pgItems.id, {
     onDelete: "cascade",
   }),
-  action: varchar("action", { length: 20 }).notNull(), // created / updated / status_changed / archived
+  action: varchar("action", { length: 20 }).notNull(), // created / updated / status_changed / archived / deleted
   detail: text("detail"),
   actor: varchar("actor", { length: 50 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(
@@ -112,10 +112,10 @@ export const sqliteActivityLog = sqliteTable("activity_log", {
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
-export type ItemType = "decision" | "progress" | "blocker" | "announcement";
+export type ItemType = "task" | "decision" | "progress" | "blocker" | "announcement";
 export type ItemPriority = "urgent" | "high" | "normal" | "low";
-export type ItemStatus = "pending" | "active" | "done" | "archived";
-export type ActionType = "created" | "updated" | "status_changed" | "archived";
+export type ItemStatus = "pending" | "active" | "done" | "archived" | "deleted";
+export type ActionType = "created" | "updated" | "status_changed" | "archived" | "deleted";
 
 export interface Item {
   id: string;

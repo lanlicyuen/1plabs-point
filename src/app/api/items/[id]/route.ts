@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { db, getTables } from "@/lib/db";
-import { verifyApiKey } from "@/lib/auth";
+import { verifyAgentApiKey } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +31,18 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!verifyApiKey(req)) {
+  const auth = verifyAgentApiKey(req);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const { id } = await params;
     const body = await req.json();
+    if (body.status === "deleted" && auth.agentName !== "ashe") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { items, activityLog } = getTables();
 
     // Fetch existing item
@@ -48,7 +53,7 @@ export async function PATCH(
     }
 
     const now = new Date().toISOString();
-    const updatedBy = body.updatedBy ?? body.actor ?? "agent";
+    const updatedBy = auth.agentName;
     const prevStatus = existing[0].status;
 
     const updates: Record<string, unknown> = { updatedAt: now, updatedBy };
@@ -84,22 +89,25 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/items/[id] — archive item (requires API key)
+// DELETE /api/items/[id] — soft delete item (requires API key)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!verifyApiKey(req)) {
+  const auth = verifyAgentApiKey(req);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (auth.agentName !== "ashe") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
     const { id } = await params;
-    const actor = req.headers.get("x-actor") ?? "agent";
     const { items, activityLog } = getTables();
     const now = new Date().toISOString();
 
-    // Archive instead of hard delete
+    // Soft delete instead of hard delete
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existing = await (db as any).select().from(items).where(eq(items.id, id));
     if (existing.length === 0) {
@@ -109,20 +117,20 @@ export async function DELETE(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db as any)
       .update(items)
-      .set({ status: "archived", updatedAt: now, updatedBy: actor })
+      .set({ status: "deleted", updatedAt: now, updatedBy: auth.agentName })
       .where(eq(items.id, id));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db as any).insert(activityLog).values({
       id: uuidv4(),
       itemId: id,
-      action: "archived",
-      detail: `Archived "${existing[0].title}"`,
-      actor,
+      action: "deleted",
+      detail: `Soft deleted "${existing[0].title}"`,
+      actor: auth.agentName,
       createdAt: now,
     });
 
-    return NextResponse.json({ data: { id, status: "archived" } });
+    return NextResponse.json({ data: { id, status: "deleted" } });
   } catch (err) {
     console.error("[DELETE /api/items/[id]]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

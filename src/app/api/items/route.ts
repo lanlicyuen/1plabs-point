@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ne } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { db, getTables } from "@/lib/db";
-import { verifyApiKey } from "@/lib/auth";
+import { verifyAgentApiKey } from "@/lib/auth";
 import type { ItemType, ItemPriority, ItemStatus } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const type = searchParams.get("type") as ItemType | null;
     const status = searchParams.get("status") as ItemStatus | null;
     const assignee = searchParams.get("assignee");
+    const includeDeleted = searchParams.get("includeDeleted") === "true";
 
     const { items } = getTables();
 
@@ -22,6 +23,9 @@ export async function GET(req: NextRequest) {
     const conditions: any[] = [];
     if (type) conditions.push(eq(items.type as Parameters<typeof eq>[0], type));
     if (status) conditions.push(eq(items.status as Parameters<typeof eq>[0], status));
+    if (!status && !includeDeleted) {
+      conditions.push(ne(items.status as Parameters<typeof ne>[0], "deleted"));
+    }
     if (assignee) conditions.push(eq(items.assignee as Parameters<typeof eq>[0], assignee));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,17 +44,18 @@ export async function GET(req: NextRequest) {
 
 // POST /api/items — create item (requires API key)
 export async function POST(req: NextRequest) {
-  if (!verifyApiKey(req)) {
+  const auth = verifyAgentApiKey(req);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await req.json();
-    const { type, title, content, priority, status, assignee, createdBy, pinned } = body;
+    const { type, title, content, priority, status, assignee, pinned } = body;
 
-    if (!type || !title || !createdBy) {
+    if (!type || !title) {
       return NextResponse.json(
-        { error: "Missing required fields: type, title, createdBy" },
+        { error: "Missing required fields: type, title" },
         { status: 400 }
       );
     }
@@ -67,7 +72,7 @@ export async function POST(req: NextRequest) {
       priority: (priority ?? "normal") as ItemPriority,
       status: (status ?? "pending") as ItemStatus,
       assignee: assignee ? String(assignee) : null,
-      createdBy: String(createdBy),
+      createdBy: auth.agentName,
       createdAt: now,
       updatedAt: now,
       updatedBy: null,
@@ -84,7 +89,7 @@ export async function POST(req: NextRequest) {
       itemId: id,
       action: "created",
       detail: `Created "${title}"`,
-      actor: String(createdBy),
+      actor: auth.agentName,
       createdAt: now,
     });
 

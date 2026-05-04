@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  point:
+    build: .
+    container_name: 1plabs-point
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - /srv/data/1plabs-point:/data
+    ports:
+      - "3002:3000"
+    networks:
+      - proxynet
+
+networks:
+  proxynet:
+    external: true
+    name: infra_proxynet

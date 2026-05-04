@@ -8,6 +8,7 @@ interface StatusBadgeProps {
 }
 
 const typeConfig: Record<ItemType, { label: string; variant: string }> = {
+  task: { label: "Task", variant: "bg-amber-100 text-amber-800 border-amber-200" },
   decision: { label: "Decision", variant: "bg-purple-100 text-purple-800 border-purple-200" },
   progress: { label: "Progress", variant: "bg-blue-100 text-blue-800 border-blue-200" },
   blocker: { label: "Blocker", variant: "bg-red-100 text-red-800 border-red-200" },
@@ -26,6 +27,7 @@ const statusConfig: Record<ItemStatus, { label: string; variant: string }> = {
   active: { label: "Active", variant: "bg-blue-100 text-blue-800 border-blue-200" },
   done: { label: "Done", variant: "bg-green-100 text-green-800 border-green-200" },
   archived: { label: "Archived", variant: "bg-gray-100 text-gray-500 border-gray-200" },
+  deleted: { label: "Deleted", variant: "bg-gray-100 text-gray-500 border-gray-200" },
 };
 
 export function TypeBadge({ type }: { type: ItemType }) {

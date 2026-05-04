@@ -52,12 +52,16 @@ export default function ItemCard({ item }: ItemCardProps) {
       )}
 
       <div className="px-4 pb-3 flex flex-wrap items-center justify-between gap-1 text-xs text-muted-foreground">
-        <span>
-          By <span className="font-medium text-foreground">{item.createdBy}</span>
+        <div className="flex flex-col gap-0.5">
+          <span>
+            By <span className="font-medium text-foreground">{item.createdBy}</span>
+          </span>
           {item.assignee && (
-            <> → <span className="font-medium text-foreground">{item.assignee}</span></>
+            <span>
+              Assignee: <span className="font-medium text-foreground">{item.assignee}</span>
+            </span>
           )}
-        </span>
+        </div>
         <span>{formatDate(item.createdAt)}</span>
       </div>
     </Card>
