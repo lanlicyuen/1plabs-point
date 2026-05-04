@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "pp_session";
+const PUBLIC_PWA_ASSET_PATHS = new Set([
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/favicon.ico",
+]);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,9 +19,9 @@ export function proxy(request: NextRequest) {
   const isPublic =
     pathname.startsWith("/demo") ||
     pathname.startsWith("/login") ||
-    pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
-    pathname.startsWith("/favicon");
+    pathname.startsWith("/icons/") ||
+    PUBLIC_PWA_ASSET_PATHS.has(pathname);
 
   if (isPublic) return NextResponse.next();
 
