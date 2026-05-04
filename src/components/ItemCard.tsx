@@ -2,6 +2,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TypeBadge, PriorityBadge, StatusBadge } from "./StatusBadge";
 import type { Item } from "@/lib/schema";
 
+const COMPLETED_STATUSES = ["done", "completed", "archived", "closed", "resolved"] as const;
+
+function isCompletedStatus(status: string): boolean {
+  return (COMPLETED_STATUSES as readonly string[]).includes(status);
+}
+
 interface ItemCardProps {
   item: Item;
 }
@@ -13,14 +19,15 @@ function formatDate(d: string | Date | null): string {
 }
 
 export default function ItemCard({ item }: ItemCardProps) {
-  const isArchived = item.status === "archived";
+  const isCompleted = isCompletedStatus(item.status);
   const isUrgent = item.priority === "urgent";
 
   return (
     <Card
       className={[
         "relative transition-all hover:shadow-md",
-        isArchived ? "opacity-50" : "",
+        isCompleted ? "opacity-60" : "",
+        isCompleted ? "border-dashed border-green-300 dark:border-green-700" : "",
         isUrgent ? "border-red-300 bg-red-50/30 dark:border-red-700 dark:bg-red-950/30" : "",
         item.pinned ? "ring-2 ring-yellow-400 ring-offset-1 dark:ring-yellow-500 dark:ring-offset-background" : "",
       ]
@@ -40,7 +47,9 @@ export default function ItemCard({ item }: ItemCardProps) {
           )}
           <StatusBadge status={item.status} />
         </div>
-        <h3 className="text-sm font-semibold leading-snug mt-1">{item.title}</h3>
+        <h3 className={`text-sm font-semibold leading-snug mt-1 ${isCompleted ? "line-through decoration-double decoration-muted-foreground" : ""}`}>
+          {item.title}
+        </h3>
       </CardHeader>
 
       {item.content && (

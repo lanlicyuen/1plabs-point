@@ -21,11 +21,17 @@ const priorityConfig: Record<ItemPriority, { label: string; variant: string }> =
   low: { label: "Low", variant: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" },
 };
 
+const COMPLETED_STATUSES = ["done", "completed", "archived", "closed", "resolved"] as const;
+
+function isCompletedStatus(status: string): boolean {
+  return (COMPLETED_STATUSES as readonly string[]).includes(status);
+}
+
 const statusConfig: Record<ItemStatus, { label: string; variant: string }> = {
   pending: { label: "Pending", variant: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800" },
   active: { label: "Active", variant: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800" },
-  done: { label: "Done", variant: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800" },
-  archived: { label: "Archived", variant: "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700" },
+  done: { label: "Completed ✓", variant: "bg-green-600 text-white border-green-700 dark:bg-green-700 dark:text-green-50 dark:border-green-600" },
+  archived: { label: "Archived ✓", variant: "bg-green-600 text-white border-green-700 dark:bg-green-700 dark:text-green-50 dark:border-green-600" },
   deleted: { label: "Deleted", variant: "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700" },
 };
 

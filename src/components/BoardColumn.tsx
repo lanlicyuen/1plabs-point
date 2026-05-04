@@ -1,6 +1,12 @@
 import ItemCard from "./ItemCard";
 import type { Item, ItemType } from "@/lib/schema";
 
+const COMPLETED_STATUSES = ["done", "completed", "archived", "closed", "resolved"] as const;
+
+function isCompletedStatus(status: string): boolean {
+  return (COMPLETED_STATUSES as readonly string[]).includes(status);
+}
+
 interface BoardColumnProps {
   title: string;
   type: ItemType;
@@ -17,7 +23,13 @@ const columnColors: Record<ItemType, string> = {
 };
 
 export default function BoardColumn({ title, type, items, icon }: BoardColumnProps) {
-  const activeItems = items.filter((i) => i.status !== "archived" && i.status !== "deleted");
+  const activeItems = items
+    .filter((i) => i.status !== "archived" && i.status !== "deleted")
+    .sort((a, b) => {
+      const aCompleted = isCompletedStatus(a.status) ? 1 : 0;
+      const bCompleted = isCompletedStatus(b.status) ? 1 : 0;
+      return aCompleted - bCompleted;
+    });
 
   return (
     <div className={`flex flex-col gap-3 min-w-0`}>
