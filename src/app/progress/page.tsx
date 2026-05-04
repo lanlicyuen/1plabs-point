@@ -43,15 +43,15 @@ export default async function ProgressPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
           {error}
         </div>
       )}
 
       {[
-        { label: "In Progress", items: inProgress, color: "text-blue-600" },
-        { label: "Pending", items: pending, color: "text-yellow-600" },
-        { label: "Done", items: done, color: "text-green-600" },
+        { label: "In Progress", items: inProgress, color: "text-blue-600 dark:text-blue-400" },
+        { label: "Pending", items: pending, color: "text-yellow-600 dark:text-yellow-400" },
+        { label: "Done", items: done, color: "text-green-600 dark:text-green-400" },
       ].map(({ label, items: group, color }) =>
         group.length > 0 ? (
           <section key={label} className="mb-8">

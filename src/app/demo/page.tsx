@@ -198,7 +198,7 @@ export default function DemoPage() {
   return (
     <div>
       {/* Demo banner */}
-      <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+      <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/50 dark:text-yellow-300">
         <strong>Demo Mode</strong> — This page shows sample data to illustrate how the board looks in production.
         No database required. <a href="/" className="underline font-medium">Go to the real board →</a>
       </div>

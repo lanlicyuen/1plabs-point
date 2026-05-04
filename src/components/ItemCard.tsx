@@ -21,14 +21,14 @@ export default function ItemCard({ item }: ItemCardProps) {
       className={[
         "relative transition-all hover:shadow-md",
         isArchived ? "opacity-50" : "",
-        isUrgent ? "border-red-300 bg-red-50/30" : "",
-        item.pinned ? "ring-2 ring-yellow-400 ring-offset-1" : "",
+        isUrgent ? "border-red-300 bg-red-50/30 dark:border-red-700 dark:bg-red-950/30" : "",
+        item.pinned ? "ring-2 ring-yellow-400 ring-offset-1 dark:ring-yellow-500 dark:ring-offset-background" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
       {item.pinned && (
-        <span className="absolute -top-2 -right-2 text-yellow-500 text-sm" title="Pinned">
+        <span className="absolute -top-2 -right-2 text-yellow-500 text-sm dark:text-yellow-400" title="Pinned">
           📌
         </span>
       )}

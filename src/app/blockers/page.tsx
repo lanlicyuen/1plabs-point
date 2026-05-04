@@ -42,14 +42,14 @@ export default async function BlockersPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
           {error}
         </div>
       )}
 
       {active.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold text-red-600 mb-3">Active Blockers</h2>
+          <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-3">Active Blockers</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {active.map((item) => (
               <ItemCard key={item.id} item={item} />

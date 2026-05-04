@@ -51,7 +51,7 @@ function LoginForm() {
         />
       </div>
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
       <Button type="submit" disabled={loading || !password}>
         {loading ? "Signing in..." : "Sign In"}

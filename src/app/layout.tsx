@@ -18,13 +18,31 @@ export const metadata: Metadata = {
   description: "Lightweight team information dashboard for 1plabs",
 };
 
+const themeScript = `
+(function(){
+  try{
+    var t=localStorage.getItem('point-theme');
+    if(t==='dark'){document.documentElement.setAttribute('data-theme','dark')}
+    else if(t==='light'){document.documentElement.removeAttribute('data-theme')}
+    else{if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.setAttribute('data-theme','dark')}else{document.documentElement.removeAttribute('data-theme')}}
+  }catch(e){}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full bg-background">
         <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

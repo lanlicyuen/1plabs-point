@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
 
 const navItems = [
   { href: "/", label: "Board", icon: "🗂️" },
@@ -24,27 +25,34 @@ export default function Header() {
             <span className="hidden sm:inline">1plabs Point</span>
           </Link>
 
-          {/* Nav */}
-          <nav className="flex items-center gap-1">
-            {navItems.map(({ href, label, icon }) => {
-              const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={[
-                    "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  ].join(" ")}
-                >
-                  <span className="text-base leading-none">{icon}</span>
-                  <span className="hidden md:inline">{label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="flex items-center gap-1">
+            {/* Nav */}
+            <nav className="flex items-center gap-1">
+              {navItems.map(({ href, label, icon }) => {
+                const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={[
+                      "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    <span className="text-base leading-none">{icon}</span>
+                    <span className="hidden md:inline">{label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Theme toggle */}
+            <div className="ml-2 border-l border-border pl-2">
+              <ThemeToggle />
+            </div>
+          </div>
         </div>
       </div>
     </header>
