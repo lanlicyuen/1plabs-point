@@ -3,12 +3,12 @@
  * Switch databases by setting the DB_DRIVER environment variable:
  *   DB_DRIVER=postgres  →  uses postgres-js
  *   DB_DRIVER=mysql     →  uses mysql2
- *   DB_DRIVER=sqlite    →  uses better-sqlite3  (default for local dev)
+ *   DB_DRIVER=sqlite    →  uses better-sqlite3 as an explicit dev fallback
  */
 
 import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
 import { drizzle as drizzleMysql } from "drizzle-orm/mysql2";
-import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
+import { createRequire } from "node:module";
 import {
   pgItems,
   pgActivityLog,
@@ -20,10 +20,23 @@ import {
 
 export type DbDriver = "postgres" | "mysql" | "sqlite";
 
-const driver = (process.env.DB_DRIVER ?? "sqlite") as DbDriver;
+export const driver = (process.env.DB_DRIVER ?? "postgres") as DbDriver;
 
 // Lazily initialised db singleton
-let _db: ReturnType<typeof drizzlePg> | ReturnType<typeof drizzleMysql> | ReturnType<typeof drizzleSqlite>;
+let _db: ReturnType<typeof drizzlePg> | ReturnType<typeof drizzleMysql> | unknown;
+
+function requireDatabaseUrl(selectedDriver: DbDriver) {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(`DATABASE_URL is required when DB_DRIVER=${selectedDriver}`);
+  }
+  return process.env.DATABASE_URL;
+}
+
+function requireDevFallbackPackage(packageName: string) {
+  // Keep native SQLite packages out of the production standalone trace.
+  const runtimeRequire = createRequire(process.cwd() + "/package.json");
+  return runtimeRequire(packageName);
+}
 
 function getDb() {
   if (_db) return _db;
@@ -31,17 +44,20 @@ function getDb() {
   if (driver === "postgres") {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const postgres = require("postgres");
-    const client = postgres(process.env.DATABASE_URL!, { ssl: process.env.DB_SSL === "true" ? "require" : undefined });
+    const client = postgres(requireDatabaseUrl("postgres"), {
+      ssl: process.env.DB_SSL === "true" ? "require" : undefined,
+    });
     _db = drizzlePg(client, { schema: { items: pgItems, activityLog: pgActivityLog } });
   } else if (driver === "mysql") {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mysql = require("mysql2/promise");
-    const pool = mysql.createPool(process.env.DATABASE_URL!);
+    const pool = mysql.createPool(requireDatabaseUrl("mysql"));
     _db = drizzleMysql(pool, { schema: { items: mysqlItems, activityLog: mysqlActivityLog }, mode: "default" });
   } else {
-    // SQLite default
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Database = require("better-sqlite3");
+    // SQLite is a dev fallback. Keep the native module out of the production
+    // Postgres path by loading it only when DB_DRIVER=sqlite.
+    const { drizzle: drizzleSqlite } = requireDevFallbackPackage("drizzle-orm/better-sqlite3");
+    const Database = requireDevFallbackPackage("better-sqlite3");
     const dbPath = process.env.SQLITE_PATH ?? "./local.db";
     const sqlite = new Database(dbPath);
     _db = drizzleSqlite(sqlite, { schema: { items: sqliteItems, activityLog: sqliteActivityLog } });

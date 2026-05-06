@@ -7,6 +7,7 @@ const PUBLIC_PWA_ASSET_PATHS = new Set([
   "/sw.js",
   "/favicon.ico",
 ]);
+const PUBLIC_API_PATHS = new Set(["/api/auth"]);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,6 +22,7 @@ export function proxy(request: NextRequest) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/icons/") ||
+    PUBLIC_API_PATHS.has(pathname) ||
     PUBLIC_PWA_ASSET_PATHS.has(pathname);
 
   if (isPublic) return NextResponse.next();

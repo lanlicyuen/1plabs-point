@@ -1,11 +1,11 @@
 import type { Config } from "drizzle-kit";
 
-const driver = (process.env.DB_DRIVER ?? "sqlite") as "postgres" | "mysql" | "sqlite";
+const driver = (process.env.DB_DRIVER ?? "postgres") as "postgres" | "mysql" | "sqlite";
 
 const configs: Record<"postgres" | "mysql" | "sqlite", Config> = {
   postgres: {
     schema: "./drizzle/schema.ts",
-    out: "./drizzle/migrations",
+    out: "./drizzle/migrations/postgres",
     dialect: "postgresql",
     dbCredentials: {
       url: process.env.DATABASE_URL ?? "",
@@ -13,7 +13,7 @@ const configs: Record<"postgres" | "mysql" | "sqlite", Config> = {
   },
   mysql: {
     schema: "./drizzle/schema.ts",
-    out: "./drizzle/migrations",
+    out: "./drizzle/migrations/mysql",
     dialect: "mysql",
     dbCredentials: {
       url: process.env.DATABASE_URL ?? "",

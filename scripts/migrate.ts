@@ -9,8 +9,17 @@
 
 import "dotenv/config";
 
+type DbDriver = "postgres" | "mysql" | "sqlite";
+
+function requireDatabaseUrl(driver: Exclude<DbDriver, "sqlite">) {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(`DATABASE_URL is required when DB_DRIVER=${driver}`);
+  }
+  return process.env.DATABASE_URL;
+}
+
 async function migrate() {
-  const driver = (process.env.DB_DRIVER ?? "sqlite") as "postgres" | "mysql" | "sqlite";
+  const driver = (process.env.DB_DRIVER ?? "postgres") as DbDriver;
   console.log(`Running migrations for driver: ${driver}`);
 
   if (driver === "sqlite") {
@@ -47,10 +56,11 @@ async function migrate() {
     console.log(`SQLite database ready at: ${dbPath}`);
   } else if (driver === "postgres") {
     const postgres = require("postgres");
-    const sql = postgres(process.env.DATABASE_URL!, {
+    const sql = postgres(requireDatabaseUrl("postgres"), {
       ssl: process.env.DB_SSL === "true" ? "require" : undefined,
     });
 
+    await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto;`;
     await sql`
       CREATE TABLE IF NOT EXISTS items (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -81,7 +91,7 @@ async function migrate() {
     console.log("PostgreSQL tables ready.");
   } else if (driver === "mysql") {
     const mysql = require("mysql2/promise");
-    const conn = await mysql.createConnection(process.env.DATABASE_URL!);
+    const conn = await mysql.createConnection(requireDatabaseUrl("mysql"));
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS items (

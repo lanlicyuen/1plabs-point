@@ -6,6 +6,8 @@ services:
     container_name: 1plabs-point
     restart: unless-stopped
     env_file: .env
+    environment:
+      DB_DRIVER: postgres
     volumes:
       - /srv/data/1plabs-point:/data
     ports:
