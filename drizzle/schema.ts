@@ -26,7 +26,7 @@ import {
 
 export const pgItems = pgTable("items", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  type: varchar("type", { length: 20 }).notNull(), // decision / progress / blocker / announcement
+  type: varchar("type", { length: 20 }).notNull(), // task / decision / progress / blocker / announcement / upgrade / deploy / incident
   title: varchar("title", { length: 200 }).notNull(),
   content: text("content"),
   priority: varchar("priority", { length: 10 }).default("normal"), // urgent / high / normal / low
@@ -112,7 +112,7 @@ export const sqliteActivityLog = sqliteTable("activity_log", {
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
-export type ItemType = "task" | "decision" | "progress" | "blocker" | "announcement";
+export type ItemType = "task" | "decision" | "progress" | "blocker" | "announcement" | "upgrade" | "deploy" | "incident";
 export type ItemPriority = "urgent" | "high" | "normal" | "low";
 export type ItemStatus = "pending" | "active" | "done" | "archived" | "deleted";
 export type ActionType = "created" | "updated" | "status_changed" | "archived" | "deleted";

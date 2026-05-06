@@ -1,7 +1,7 @@
 import { db, getTables } from "@/lib/db";
 import { and, desc, ne } from "drizzle-orm";
 import BoardColumn from "@/components/BoardColumn";
-import type { Item } from "../../drizzle/schema";
+import type { Item } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,9 @@ export default async function HomePage() {
 
   const byType = {
     task: items.filter((i) => i.type === "task"),
+    upgrade: items.filter((i) => i.type === "upgrade"),
+    deploy: items.filter((i) => i.type === "deploy"),
+    incident: items.filter((i) => i.type === "incident"),
     decision: items.filter((i) => i.type === "decision"),
     progress: items.filter((i) => i.type === "progress"),
     blocker: items.filter((i) => i.type === "blocker"),
@@ -39,7 +42,7 @@ export default async function HomePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Team Board</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Overview of tasks, decisions, progress, blockers, and announcements.
+          Overview of tasks, system timeline, decisions, progress, blockers, and announcements.
         </p>
       </div>
 
@@ -49,9 +52,12 @@ export default async function HomePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <BoardColumn title="Tasks" type="task" items={byType.task} icon="✅" />
-        <BoardColumn title="Decisions" type="decision" items={byType.decision} icon="⚖️" />
+        <BoardColumn title="Upgrades" type="upgrade" items={byType.upgrade} icon="📦" />
+        <BoardColumn title="Deploys" type="deploy" items={byType.deploy} icon="🚀" />
+        <BoardColumn title="Incidents" type="incident" items={byType.incident} icon="⚠️" />
+        <BoardColumn title="Decisions" type="decision" items={byType.decision} icon="🧠" />
         <BoardColumn title="Progress" type="progress" items={byType.progress} icon="📊" />
         <BoardColumn title="Blockers" type="blocker" items={byType.blocker} icon="🚧" />
         <BoardColumn title="Announcements" type="announcement" items={byType.announcement} icon="📢" />

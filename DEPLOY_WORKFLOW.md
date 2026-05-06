@@ -1,74 +1,115 @@
 # Deploy Workflow — Point 部署流程
 
-## 标准部署流程
+## Current Architecture
 
-### Dev Server (1.1.1.7:/srv/apps/1plabs-point)
+- Dev server path: `/srv/apps/1plabs-point`
+- Runtime container: `1plabs-point`
+- Host database: `/srv/data/1plabs-point/1plabs-point.db`
+- Container database: `/data/1plabs-point.db`
+- Public Point API: `https://point.1plabs.pro/api`
+- Docker Compose port mapping: `3002` host → `3000` container
+
+## DEV ONLY Workflow
+
+For dev-only changes:
+
+1. Read project rules before editing.
+2. Make code changes in `/srv/apps/1plabs-point` on Dev Server.
+3. Run `npm run build`.
+4. Commit to Git.
+5. Push to GitHub only when Boss explicitly requests it.
+6. Do not deploy web server unless Boss explicitly requests deployment.
+
+Recommended Git commands on Dev Server:
 
 ```bash
-# 1. 开发修改代码
-# 2. 测试确认
-# 3. Git 操作
-git add -A
+cd /srv/apps/1plabs-point
+git status
+git add <changed-files-only>
 git commit -m "<type>: <description>"
 git push origin main
-# SSH key: id_ed25519_1plabs_point, host alias: github.com-1plabs-point
 ```
 
-### Web Server (1.1.1.4:/srv/apps/1plabs-point)
+Do not use `git add -A` if `.env*`, keys, tokens, or local backups are present.
+
+## Web Server Deployment Workflow
+
+Web Server is deployed by Boss phone Termux Codex over SSH. Do not auto-deploy from dev-only tasks.
+
+When Boss explicitly approves deployment on Web Server:
 
 ```bash
-# 1. 拉取最新代码
 cd /srv/apps/1plabs-point
 git pull origin main
-
-# 2. 重建并启动容器
 docker compose up -d --build
-
-# 3. Health check（见下方）
 ```
 
 ## Health Check
 
-部署完成后执行以下检查：
+After deployment, run:
 
 ```bash
-# 1. 容器状态
+# 1. Container status
 docker compose ps
-# 期望: point 容器 running, 端口 3002→3000
+# Expected: point container running, port 3002 -> 3000
 
-# 2. HTTP 状态
+# 2. HTTP status
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3002/
-# 期望: 200
+# Expected: 200
 
-# 3. API 可用性
+# 3. API availability
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3002/api/items
-# 期望: 200 (或 401 未授权，但不应该是 500)
+# Expected: 200 or 401 depending auth, not 500
 
-# 4. 登录验证
-# 浏览器访问 http://1.1.1.4:3002，确认可正常登录
+# 4. Browser login
+# Visit the app and confirm login/auth works.
 ```
 
-## 回滚步骤
+Also verify:
 
-如果部署后发现问题：
+- Dark Mode has no visual regression.
+- PWA service worker still registers.
+- `/api/*` requests are not cached by PWA.
+
+## Required Upgrade / Deploy Log
+
+After every feature upgrade, bug fix, incident response, or deployment, write one Point timeline item using:
 
 ```bash
-# 1. 查看最近 commit
+npm run upgrade:log --   --title "Short title"   --type upgrade   --changes "What changed"   --fixes "What was fixed"   --impact "Affected area"   --risk "Known risk"   --deployed "dev only / not deployed"
+```
+
+Use `--type deploy` for production deployments and set `--deployed "deployed"` after verification.
+
+The script writes through `POST /api/items` and needs one of these env vars:
+
+- `POINT_AGENT_API_KEY`
+- `AGENT_API_KEY_SYSTEM`
+- `AGENT_API_KEY_XIAO_BLUE`
+- `AGENT_API_KEY`
+
+Current auth maps bearer tokens to existing agents. If no `system` token is configured, use the `xiao_blue` token.
+
+## Rollback Steps
+
+If deployment fails after Boss-approved production deployment:
+
+```bash
+# 1. Inspect recent commits
 git log --oneline -5
 
-# 2. 回滚到上一个稳定版本
+# 2. Only with explicit Boss emergency approval, reset to a stable commit
 git reset --hard <stable-commit-hash>
 docker compose up -d --build
-
-# 3. 如果需要远程也回滚
-git push origin main --force
-# 注意: force push 影响协作，仅在紧急回滚时使用
 ```
 
-## 注意事项
+Force push is not part of the normal rollback path. Use it only with explicit Boss emergency approval because it affects collaboration history.
 
-- Web Server 禁止直接开发，只执行 pull + deploy
-- 部署前确认 Dev Server 已 push 到 GitHub
-- Docker Compose 端口映射: 3002(宿主) → 3000(容器)
-- 每次部署后必须完整执行 Health Check
-- 生产环境不要使用 `npm run dev`，必须用 Docker 容器
+After rollback, create a Point `incident` or `deploy` log with the failed commit, stable commit, impact, and recovery status.
+
+## Notes
+
+- Web Server 禁止直接开发，只执行 pull + deploy。
+- 部署前确认 Dev Server 已 push 到 GitHub。
+- 生产环境不要使用 `npm run dev`，必须用 Docker 容器。
+- 数据库相关变更必须先备份 `/srv/data/1plabs-point/1plabs-point.db`。

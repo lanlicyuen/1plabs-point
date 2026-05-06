@@ -23,6 +23,9 @@ const columnColors: Record<ItemType, string> = {
   progress: "border-t-blue-500",
   blocker: "border-t-red-500",
   announcement: "border-t-green-500",
+  upgrade: "border-t-cyan-500",
+  deploy: "border-t-emerald-500",
+  incident: "border-t-rose-500",
 };
 
 export default function BoardColumn({ title, type, items, icon }: BoardColumnProps) {
