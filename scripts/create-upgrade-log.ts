@@ -154,18 +154,27 @@ async function main() {
     pinned: options.pinned,
   };
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+  const sessionCookie = process.env.POINT_SESSION_COOKIE ?? "pp_session=authenticated";
+  if (sessionCookie && sessionCookie !== "none") {
+    headers.Cookie = sessionCookie;
+  }
+
   const response = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/items`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers,
+    redirect: "manual",
     body: JSON.stringify(payload),
   });
 
   const text = await response.text();
   if (!response.ok) {
-    throw new Error(`Point API returned ${response.status}: ${text}`);
+    const location = response.headers.get("location");
+    const redirectHint = location ? ` Redirected to: ${location}.` : "";
+    throw new Error(`Point API returned ${response.status}: ${text}.${redirectHint}`);
   }
 
   const result = text ? JSON.parse(text) : {};
