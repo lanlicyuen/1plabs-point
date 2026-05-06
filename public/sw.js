@@ -52,27 +52,28 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   // ─── SECURITY RULES ────────────────────────────────────────
-  // A. Non-GET requests: pass through, never cache
+  // A. Non-http(s) requests: let the browser handle them.
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return;
+  }
+
+  // B. Non-GET requests: let the browser handle them, never cache
   if (request.method !== "GET") {
-    event.respondWith(fetch(request));
     return;
   }
 
-  // B. /api/* paths: pass through, never cache
-  if (url.pathname.startsWith("/api")) {
-    event.respondWith(fetch(request));
+  // C. /api/* paths: let the browser handle them, never cache
+  if (url.pathname.startsWith("/api/")) {
     return;
   }
 
-  // C. /admin paths: pass through, never cache
+  // D. /admin paths: let the browser handle them, never cache
   if (url.pathname.includes("/admin")) {
-    event.respondWith(fetch(request));
     return;
   }
 
-  // D. Requests with Authorization header: pass through, never cache
+  // E. Requests with Authorization header: let the browser handle them, never cache
   if (request.headers.get("Authorization")) {
-    event.respondWith(fetch(request));
     return;
   }
 
