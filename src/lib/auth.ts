@@ -35,6 +35,8 @@ function getConfiguredAgentKeys(): Map<string, string> {
   }
 
   const namedKeys: Array<[string, string | undefined]> = [
+    ["xiao_blue", process.env.POINT_AGENT_API_KEY],
+    ["system", process.env.AGENT_API_KEY_SYSTEM],
     ["yaya", process.env.AGENT_API_KEY_YAYA],
     ["ashe", process.env.AGENT_API_KEY_ASHE],
     ["xiao_blue", process.env.AGENT_API_KEY_XIAO_BLUE],

@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { db, getTables } from "@/lib/db";
+import { db, driver, getTables } from "@/lib/db";
 import { verifyAgentApiKey } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+function currentDbTimestamp(): Date | string {
+  const now = new Date();
+  return driver === "postgres" ? now : now.toISOString();
+}
 
 // GET /api/items/[id]
 export async function GET(
@@ -52,7 +57,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const now = new Date().toISOString();
+    const now = currentDbTimestamp();
     const updatedBy = auth.agentName;
     const prevStatus = existing[0].status;
 
@@ -105,7 +110,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const { items, activityLog } = getTables();
-    const now = new Date().toISOString();
+    const now = currentDbTimestamp();
 
     // Soft delete instead of hard delete
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

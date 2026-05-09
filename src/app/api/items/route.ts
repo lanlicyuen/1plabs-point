@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { db, getTables } from "@/lib/db";
+import { db, driver, getTables } from "@/lib/db";
 import { verifyAgentApiKey } from "@/lib/auth";
 import type { ItemType, ItemPriority, ItemStatus } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
+
+function currentDbTimestamp(): Date | string {
+  const now = new Date();
+  return driver === "postgres" ? now : now.toISOString();
+}
 
 // GET /api/items — list items with optional filters
 export async function GET(req: NextRequest) {
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     const { items, activityLog } = getTables();
     const id = uuidv4();
-    const now = new Date().toISOString();
+    const now = currentDbTimestamp();
 
     const newItem = {
       id,
