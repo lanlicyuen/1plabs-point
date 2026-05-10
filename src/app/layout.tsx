@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import PWARegister from "@/components/PWARegister";
+import DevFooter from "@/components/DevFooter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,9 +59,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-full bg-background">
         <Header />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-16">
           {children}
         </main>
+        <DevFooter />
         <PWARegister />
       </body>
     </html>
