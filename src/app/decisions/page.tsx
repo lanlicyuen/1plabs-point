@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import DecisionsWorkspace from "./DecisionsWorkspace";
 
 export default function DecisionsPage() {
-  return <DecisionsWorkspace />;
+  return (
+    <Suspense>
+      <DecisionsWorkspace />
+    </Suspense>
+  );
 }

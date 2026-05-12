@@ -1,6 +1,9 @@
+"use client";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TypeBadge, PriorityBadge, StatusBadge } from "./StatusBadge";
 import type { Item } from "@/lib/schema";
+import Link from "next/link";
 
 const COMPLETED_STATUSES = ["done", "completed", "archived", "closed", "resolved"] as const;
 
@@ -18,14 +21,53 @@ function formatDate(d: string | Date | null): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+type DecisionSessionMeta = {
+  decisionSessionId: string;
+  projectTitle?: string;
+  sessionTitle?: string;
+  decisionCount?: number;
+};
+
+function getDecisionSessionMeta(item: Item): DecisionSessionMeta | null {
+  if (item.type !== "decision" || !item.content) return null;
+
+  try {
+    const parsed = JSON.parse(item.content) as Partial<DecisionSessionMeta>;
+    if (typeof parsed.decisionSessionId === "string" && parsed.decisionSessionId.trim()) {
+      return {
+        decisionSessionId: parsed.decisionSessionId.trim(),
+        projectTitle: parsed.projectTitle,
+        sessionTitle: parsed.sessionTitle,
+        decisionCount: parsed.decisionCount,
+      };
+    }
+  } catch {
+    const quoted = item.content.match(/"decisionSessionId"\s*:\s*"([^"]+)"/);
+    const plain = item.content.match(/decisionSessionId\s*[:=]\s*([^\s,}]+)/);
+    const decisionSessionId = quoted?.[1] ?? plain?.[1];
+
+    if (decisionSessionId) {
+      return { decisionSessionId: decisionSessionId.trim().replace(/^["']|["']$/g, "") };
+    }
+  }
+
+  return null;
+}
+
 export default function ItemCard({ item }: ItemCardProps) {
   const isCompleted = isCompletedStatus(item.status);
   const isUrgent = item.priority === "urgent";
+  const decisionSessionMeta = getDecisionSessionMeta(item);
+  const isDecisionWithoutSessionLink = item.type === "decision" && !decisionSessionMeta;
+  const decisionHref = decisionSessionMeta
+    ? `/decisions?session=${encodeURIComponent(decisionSessionMeta.decisionSessionId)}`
+    : null;
 
-  return (
+  const card = (
     <Card
       className={[
         "relative transition-all hover:shadow-md",
+        decisionHref ? "cursor-pointer" : "",
         isCompleted ? "opacity-60" : "",
         isCompleted ? "border-dashed border-green-300 dark:border-green-700" : "",
         isUrgent ? "border-red-300 bg-red-50/30 dark:border-red-700 dark:bg-red-950/30" : "",
@@ -46,6 +88,11 @@ export default function ItemCard({ item }: ItemCardProps) {
             <PriorityBadge priority={item.priority} />
           )}
           <StatusBadge status={item.status} />
+          {isDecisionWithoutSessionLink && (
+            <span className="inline-flex items-center rounded-full border border-muted-foreground/20 bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              No local session link
+            </span>
+          )}
         </div>
         <h3 className={`text-sm font-semibold leading-snug mt-1 ${isCompleted ? "line-through decoration-double decoration-muted-foreground" : ""}`}>
           {item.title}
@@ -55,7 +102,17 @@ export default function ItemCard({ item }: ItemCardProps) {
       {item.content && (
         <CardContent className="px-4 pb-4 pt-0">
           <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">
-            {item.content}
+            {decisionSessionMeta
+              ? [
+                  decisionSessionMeta.projectTitle,
+                  decisionSessionMeta.sessionTitle,
+                  typeof decisionSessionMeta.decisionCount === "number"
+                    ? `${decisionSessionMeta.decisionCount} decisions`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join("\n")
+              : item.content}
           </p>
         </CardContent>
       )}
@@ -74,5 +131,13 @@ export default function ItemCard({ item }: ItemCardProps) {
         <span>{formatDate(item.createdAt)}</span>
       </div>
     </Card>
+  );
+
+  if (!decisionHref) return card;
+
+  return (
+    <Link href={decisionHref} className="block rounded-lg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+      {card}
+    </Link>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Check,
   Clipboard,
@@ -105,6 +106,7 @@ function loadSessions(): SavedSession[] {
 }
 
 export default function DecisionsWorkspace() {
+  const searchParams = useSearchParams();
   const [projectTitle, setProjectTitle] = useState("");
   const [sessionTitle, setSessionTitle] = useState("");
   const [rawInput, setRawInput] = useState("");
@@ -122,6 +124,16 @@ export default function DecisionsWorkspace() {
 
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session");
+    if (!sessionId || sessions.length === 0 || activeSessionId === sessionId) return;
+
+    const session = sessions.find((item) => item.id === sessionId);
+    if (session) {
+      restoreSession(session);
+    }
+  }, [activeSessionId, searchParams, sessions]);
 
   const exportedMarkdown = useMemo(
     () => buildMarkdown(projectTitle, sessionTitle, decisions),
@@ -151,7 +163,24 @@ export default function DecisionsWorkspace() {
     setSaveMessage("");
   }
 
-  function handleSave() {
+  async function syncBoardCard(session: SavedSession) {
+    const response = await fetch("/api/decision-session-board-card", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        decisionSessionId: session.id,
+        projectTitle: session.projectTitle,
+        sessionTitle: session.sessionTitle,
+        decisionCount: session.decisions.length,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Could not sync Board card.");
+    }
+  }
+
+  async function handleSave() {
     if (!canSave) {
       setSaveMessage("Project title, session title, and decisions are required.");
       return;
@@ -174,7 +203,12 @@ export default function DecisionsWorkspace() {
 
     persistSessions(nextSessions);
     setActiveSessionId(saved.id);
-    setSaveMessage("Session saved.");
+    try {
+      await syncBoardCard(saved);
+      setSaveMessage("Session saved and Board card synced.");
+    } catch {
+      setSaveMessage("Session saved locally. Board card sync failed.");
+    }
   }
 
   function restoreSession(session: SavedSession) {
