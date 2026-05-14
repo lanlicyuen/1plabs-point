@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type DecisionStatus = "pending" | "accepted";
+type DecisionStatus = "pending" | "accepted" | "rejected";
 
 type DecisionItem = {
   id: string;
@@ -28,12 +28,15 @@ type SavedSession = {
   projectTitle: string;
   sessionTitle: string;
   rawInput: string;
+  sessionNotes?: string;
   exportedMarkdown: string;
   decisions: DecisionItem[];
   createdAt: string;
 };
 
 const STORAGE_KEY = "point-decisions-v2-sessions";
+const DECISION_VERBS =
+  /(accept|adopt|allow|approve|build|cancel|choose|defer|deny|disable|enable|launch|migrate|pause|reject|remove|require|ship|start|stop|support|use|采用|保留|关闭|决定|启用|取消|否决|启动|开发|拒绝|接受|支持|暂停|改为|新增|确定|禁用|移除|采用|使用|选择|避免|允许|上线|暂不|需要)/i;
 
 function createId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -43,50 +46,114 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function parseDecisionItems(input: string): DecisionItem[] {
-  const items: DecisionItem[] = [];
-
-  for (const rawLine of input.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#") || line === "---" || line.startsWith(">")) {
-      continue;
-    }
-
-    const checkbox = line.match(/^[-*]\s+\[([xX ])\]\s+(.+)$/);
-    if (checkbox) {
-      items.push({
-        id: createId(),
-        text: checkbox[2].trim(),
-        status: checkbox[1].toLowerCase() === "x" ? "accepted" : "pending",
-      });
-      continue;
-    }
-
-    const bullet = line.match(/^[-*]\s+(.+)$/);
-    if (bullet) {
-      items.push({ id: createId(), text: bullet[1].trim(), status: "pending" });
-      continue;
-    }
-
-    const numbered = line.match(/^\d+\.\s+(.+)$/);
-    if (numbered) {
-      items.push({ id: createId(), text: numbered[1].trim(), status: "pending" });
-    }
-  }
-
-  return items.filter((item) => item.text.length > 0);
+function isMarkdownDivider(line: string) {
+  return /^(?:-{3,}|\*{3,}|_{3,})$/.test(line);
 }
 
-function buildMarkdown(projectTitle: string, sessionTitle: string, decisions: DecisionItem[]) {
+function isHeading(line: string) {
+  return /^#{1,6}\s+\S/.test(line);
+}
+
+function isColonTitle(line: string) {
+  return /[:：]$/.test(line) && !/[。.!?！？]$/.test(line);
+}
+
+function normalizeDecisionText(text: string) {
+  return text.trim().replace(/\s+/g, " ");
+}
+
+function isDecisionText(text: string) {
+  const normalized = normalizeDecisionText(text);
+  const compact = normalized.replace(/\s/g, "");
+
+  if (compact.length < 4) return false;
+  if (isHeading(normalized) || isMarkdownDivider(normalized) || normalized.startsWith(">")) return false;
+  if (isColonTitle(normalized)) return false;
+  if (/^[\p{L}\p{N}\s/_-]+$/u.test(normalized) && !DECISION_VERBS.test(normalized)) return false;
+
+  return DECISION_VERBS.test(normalized);
+}
+
+function parseDecisionLine(rawLine: string): DecisionItem | null {
+  const line = rawLine.trim();
+
+  if (!line || isHeading(line) || isMarkdownDivider(line) || line.startsWith(">") || isColonTitle(line)) {
+    return null;
+  }
+
+  const checkbox = line.match(/^[-*]\s+\[([xX ])\]\s+(.+)$/);
+  if (checkbox) {
+    const text = normalizeDecisionText(checkbox[2]);
+    if (!isDecisionText(text)) return null;
+
+    return {
+      id: createId(),
+      text,
+      status: checkbox[1].toLowerCase() === "x" ? "accepted" : "pending",
+    };
+  }
+
+  const bullet = line.match(/^[-*]\s+(.+)$/);
+  if (bullet) {
+    const text = normalizeDecisionText(bullet[1]);
+    return isDecisionText(text) ? { id: createId(), text, status: "pending" } : null;
+  }
+
+  const numbered = line.match(/^\d+\.\s+(.+)$/);
+  if (numbered) {
+    const text = normalizeDecisionText(numbered[1]);
+    return isDecisionText(text) ? { id: createId(), text, status: "pending" } : null;
+  }
+
+  return null;
+}
+
+function parseSession(input: string): { sessionNotes: string; decisions: DecisionItem[] } {
+  const decisions: DecisionItem[] = [];
+  const notes: string[] = [];
+
+  for (const rawLine of input.split(/\r?\n/)) {
+    const decision = parseDecisionLine(rawLine);
+    if (decision) {
+      decisions.push(decision);
+      continue;
+    }
+
+    notes.push(rawLine);
+  }
+
+  return {
+    sessionNotes: notes.join("\n").trim(),
+    decisions,
+  };
+}
+
+function getStatusLabel(status: DecisionStatus) {
+  if (status === "accepted") return "accepted";
+  if (status === "rejected") return "rejected";
+  return "pending";
+}
+
+function buildMarkdown(
+  projectTitle: string,
+  sessionTitle: string,
+  sessionNotes: string,
+  decisions: DecisionItem[]
+) {
   const lines = [
     `# ${projectTitle || "Untitled Project"}`,
     "",
     `## ${sessionTitle || "Untitled Session"}`,
     "",
+    "### Notes",
+    sessionNotes.trim() || "_No notes._",
+    "",
+    "### Decisions",
+    "",
     "| Status | Decision |",
     "| --- | --- |",
     ...decisions.map((item) => {
-      const label = item.status === "accepted" ? "Accepted" : "Pending";
+      const label = getStatusLabel(item.status);
       return `| ${label} | ${item.text.replace(/\|/g, "\\|")} |`;
     }),
   ];
@@ -110,6 +177,7 @@ export default function DecisionsWorkspace() {
   const [projectTitle, setProjectTitle] = useState("");
   const [sessionTitle, setSessionTitle] = useState("");
   const [rawInput, setRawInput] = useState("");
+  const [sessionNotes, setSessionNotes] = useState("");
   const [decisions, setDecisions] = useState<DecisionItem[]>([]);
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -136,8 +204,8 @@ export default function DecisionsWorkspace() {
   }, [activeSessionId, searchParams, sessions]);
 
   const exportedMarkdown = useMemo(
-    () => buildMarkdown(projectTitle, sessionTitle, decisions),
-    [projectTitle, sessionTitle, decisions]
+    () => buildMarkdown(projectTitle, sessionTitle, sessionNotes, decisions),
+    [projectTitle, sessionTitle, sessionNotes, decisions]
   );
 
   const groupedSessions = useMemo(() => {
@@ -151,7 +219,9 @@ export default function DecisionsWorkspace() {
   const canSave =
     projectTitle.trim().length > 0 &&
     sessionTitle.trim().length > 0 &&
-    decisions.length > 0;
+    (sessionNotes.trim().length > 0 || decisions.length > 0);
+
+  const canExport = sessionNotes.trim().length > 0 || decisions.length > 0;
 
   function persistSessions(nextSessions: SavedSession[]) {
     setSessions(nextSessions);
@@ -159,7 +229,9 @@ export default function DecisionsWorkspace() {
   }
 
   function handleParse() {
-    setDecisions(parseDecisionItems(rawInput));
+    const parsed = parseSession(rawInput);
+    setSessionNotes(parsed.sessionNotes);
+    setDecisions(parsed.decisions);
     setSaveMessage("");
   }
 
@@ -182,7 +254,7 @@ export default function DecisionsWorkspace() {
 
   async function handleSave() {
     if (!canSave) {
-      setSaveMessage("Project title, session title, and decisions are required.");
+      setSaveMessage("Project title, session title, and parsed content are required.");
       return;
     }
 
@@ -191,6 +263,7 @@ export default function DecisionsWorkspace() {
       projectTitle: projectTitle.trim(),
       sessionTitle: sessionTitle.trim(),
       rawInput,
+      sessionNotes,
       exportedMarkdown,
       decisions,
       createdAt: new Date().toISOString(),
@@ -216,6 +289,7 @@ export default function DecisionsWorkspace() {
     setProjectTitle(session.projectTitle);
     setSessionTitle(session.sessionTitle);
     setRawInput(session.rawInput);
+    setSessionNotes(session.sessionNotes ?? parseSession(session.rawInput).sessionNotes);
     setDecisions(session.decisions);
     setSaveMessage("");
     setExportOpen(false);
@@ -226,6 +300,7 @@ export default function DecisionsWorkspace() {
     setProjectTitle("");
     setSessionTitle("");
     setRawInput("");
+    setSessionNotes("");
     setDecisions([]);
     setSaveMessage("");
   }
@@ -333,8 +408,20 @@ export default function DecisionsWorkspace() {
               className="min-h-48 w-full resize-y rounded-lg border border-input bg-transparent p-3 font-mono text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
               value={rawInput}
               onChange={(event) => setRawInput(event.target.value)}
-              placeholder={"- item\n* item\n1. item\n- [x] accepted item\n- [ ] pending item"}
+              placeholder={"# 当前进度\n\nAheadClock 已完成 Android MVP。\n\n- 先开发 Android\n- 暂不开发 iOS\n- 使用 Flutter"}
             />
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold">Session Notes</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Markdown context kept outside the decision list.
+                </p>
+              </div>
+            </div>
+            <pre className="max-h-72 min-h-36 overflow-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-sm leading-6 whitespace-pre-wrap text-foreground dark:bg-input/20">{sessionNotes || "No notes parsed yet."}</pre>
           </section>
 
           <section className="rounded-lg border border-border bg-card p-4">
@@ -349,7 +436,7 @@ export default function DecisionsWorkspace() {
                 <Button
                   onClick={() => setExportOpen(true)}
                   variant="outline"
-                  disabled={decisions.length === 0}
+                  disabled={!canExport}
                 >
                   <FileDown />
                   Export Markdown
@@ -361,9 +448,9 @@ export default function DecisionsWorkspace() {
               <table className="w-full table-fixed text-sm">
                 <thead className="bg-muted/60 text-muted-foreground">
                   <tr>
-                    <th className="w-36 px-3 py-2 text-left font-medium">Status</th>
+                    <th className="w-32 px-3 py-2 text-left font-medium">Status</th>
                     <th className="px-3 py-2 text-left font-medium">Decision</th>
-                    <th className="w-12 px-3 py-2 text-right font-medium" aria-label="Actions" />
+                    <th className="w-11 px-2 py-2 text-right font-medium" aria-label="Actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -376,9 +463,9 @@ export default function DecisionsWorkspace() {
                   ) : (
                     decisions.map((item) => (
                       <tr key={item.id} className="border-t border-border">
-                        <td className="px-3 py-2 align-top">
+                        <td className="px-3 py-1.5 align-top">
                           <select
-                            className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                            className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                             value={item.status}
                             onChange={(event) =>
                               updateDecision(item.id, {
@@ -388,18 +475,19 @@ export default function DecisionsWorkspace() {
                           >
                             <option value="pending">pending</option>
                             <option value="accepted">accepted</option>
+                            <option value="rejected">rejected</option>
                           </select>
                         </td>
-                        <td className="px-3 py-2 align-top">
+                        <td className="px-3 py-1.5 align-top">
                           <input
-                            className="h-8 w-full rounded-lg border border-transparent bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                            className="h-7 w-full rounded-md border border-transparent bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                             value={item.text}
                             onChange={(event) =>
                               updateDecision(item.id, { text: event.target.value })
                             }
                           />
                         </td>
-                        <td className="px-3 py-2 text-right align-top">
+                        <td className="px-2 py-1.5 text-right align-top">
                           <Button
                             variant="ghost"
                             size="icon-sm"

@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_POINT_APP_MODE: "DEV",
     NEXT_PUBLIC_POINT_BUILD_TIME: getBuildTime(),
     NEXT_PUBLIC_POINT_COMMIT: getGitShortHash(),
-    NEXT_PUBLIC_POINT_DECISIONS_VERSION: "Decisions v2",
+    NEXT_PUBLIC_POINT_DECISIONS_VERSION: "Decisions v3",
     NEXT_PUBLIC_POINT_WORKSPACE_VERSION: "v0.2.0",
   },
 };
