@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/components/LanguageProvider";
 
 type DecisionStatus = "pending" | "accepted" | "rejected" | "completed" | "archived";
 
@@ -243,6 +244,7 @@ function loadSessions(): SavedSession[] {
 
 export default function DecisionsWorkspace() {
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const [projectTitle, setProjectTitle] = useState("");
   const [sessionTitle, setSessionTitle] = useState("");
   const [rawInput, setRawInput] = useState("");
@@ -325,7 +327,7 @@ export default function DecisionsWorkspace() {
 
   async function handleSave() {
     if (!canSave) {
-      setSaveMessage("Project title, session title, and parsed content are required.");
+      setSaveMessage(t.decisions.saveRequired);
       return;
     }
 
@@ -349,9 +351,9 @@ export default function DecisionsWorkspace() {
     setActiveSessionId(saved.id);
     try {
       await syncBoardCard(saved);
-      setSaveMessage("Session saved and Board card synced.");
+      setSaveMessage(t.decisions.saveSynced);
     } catch {
-      setSaveMessage("Session saved locally. Board card sync failed.");
+      setSaveMessage(t.decisions.saveLocalOnly);
     }
   }
 
@@ -401,14 +403,14 @@ export default function DecisionsWorkspace() {
     <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
       <aside className="rounded-lg border border-border bg-card p-4">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">History</h2>
-          <Button variant="ghost" size="icon-sm" onClick={resetWorkspace} aria-label="New session">
+          <h2 className="text-sm font-semibold">{t.decisions.history}</h2>
+          <Button variant="ghost" size="icon-sm" onClick={resetWorkspace} aria-label={t.decisions.newSession}>
             <RotateCcw />
           </Button>
         </div>
 
         {Object.keys(groupedSessions).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No saved sessions.</p>
+          <p className="text-sm text-muted-foreground">{t.decisions.noSavedSessions}</p>
         ) : (
           <div className="space-y-4">
             {Object.entries(groupedSessions).map(([title, projectSessions]) => (
@@ -440,10 +442,10 @@ export default function DecisionsWorkspace() {
       <div className="min-w-0">
         <div className="mb-6">
           <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <span>⚖️</span> Decisions
+            <span>⚖️</span> {t.decisions.pageTitle}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Project decision workspace for parsing, saving, and exporting sessions.
+            {t.decisions.pageDescription}
           </p>
         </div>
 
@@ -451,7 +453,7 @@ export default function DecisionsWorkspace() {
           <section className="rounded-lg border border-border bg-card p-4">
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium">
-                Project Title
+                {t.decisions.projectTitle}
                 <Input
                   required
                   value={projectTitle}
@@ -460,7 +462,7 @@ export default function DecisionsWorkspace() {
                 />
               </label>
               <label className="grid gap-1.5 text-sm font-medium">
-                Session Title
+                {t.decisions.sessionTitle}
                 <Input
                   required
                   value={sessionTitle}
@@ -473,9 +475,9 @@ export default function DecisionsWorkspace() {
 
           <section className="rounded-lg border border-border bg-card p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold">Parse Suggestions</h2>
+              <h2 className="text-sm font-semibold">{t.decisions.parseSuggestions}</h2>
               <Button onClick={handleParse} variant="secondary">
-                Parse
+                {t.decisions.parse}
               </Button>
             </div>
             <textarea
@@ -489,23 +491,23 @@ export default function DecisionsWorkspace() {
           <section className="rounded-lg border border-border bg-card p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold">Session Notes</h2>
+                <h2 className="text-sm font-semibold">{t.decisions.sessionNotes}</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Markdown context kept outside the decision list.
+                  {t.decisions.sessionNotesDescription}
                 </p>
               </div>
             </div>
-            <pre className="max-h-72 min-h-36 overflow-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-sm leading-6 whitespace-pre-wrap text-foreground dark:bg-input/20">{sessionNotes || "No notes parsed yet."}</pre>
+            <pre className="max-h-72 min-h-36 overflow-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-sm leading-6 whitespace-pre-wrap text-foreground dark:bg-input/20">{sessionNotes || t.decisions.noNotes}</pre>
           </section>
 
           <section className="rounded-lg border border-border bg-card p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold">Decision Table</h2>
+              <h2 className="text-sm font-semibold">{t.decisions.decisionTable}</h2>
               <div className="flex flex-wrap items-center gap-2">
                 {saveMessage && <span className="text-sm text-muted-foreground">{saveMessage}</span>}
                 <Button onClick={handleSave} disabled={!canSave}>
                   <Save />
-                  Save Session
+                  {t.decisions.saveSession}
                 </Button>
                 <Button
                   onClick={() => setExportOpen(true)}
@@ -513,7 +515,7 @@ export default function DecisionsWorkspace() {
                   disabled={!canExport}
                 >
                   <FileDown />
-                  Export Markdown
+                  {t.decisions.exportMarkdown}
                 </Button>
               </div>
             </div>
@@ -522,16 +524,16 @@ export default function DecisionsWorkspace() {
               <table className="w-full table-fixed text-sm">
                 <thead className="bg-muted/60 text-muted-foreground">
                   <tr>
-                    <th className="w-32 px-3 py-2 text-left font-medium">Status</th>
-                    <th className="px-3 py-2 text-left font-medium">Decision</th>
-                    <th className="w-11 px-2 py-2 text-right font-medium" aria-label="Actions" />
+                    <th className="w-32 px-3 py-2 text-left font-medium">{t.decisions.status}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t.decisions.decision}</th>
+                    <th className="w-11 px-2 py-2 text-right font-medium" aria-label={t.decisions.actions} />
                   </tr>
                 </thead>
                 <tbody>
                   {decisions.length === 0 ? (
                     <tr>
                       <td className="px-3 py-8 text-center text-muted-foreground" colSpan={3}>
-                        No parsed decisions.
+                        {t.decisions.noParsedDecisions}
                       </td>
                     </tr>
                   ) : (
@@ -549,7 +551,7 @@ export default function DecisionsWorkspace() {
                           >
                             {DECISION_STATUSES.map((status) => (
                               <option key={status} value={status}>
-                                {status}
+                                {t.status[status]}
                               </option>
                             ))}
                           </select>
@@ -568,7 +570,7 @@ export default function DecisionsWorkspace() {
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => removeDecision(item.id)}
-                            aria-label="Remove decision"
+                            aria-label={t.decisions.removeDecision}
                           >
                             <Trash2 />
                           </Button>
@@ -593,13 +595,13 @@ export default function DecisionsWorkspace() {
           <div className="w-full max-w-3xl rounded-lg border border-border bg-card shadow-xl">
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <h2 id="export-title" className="text-sm font-semibold">
-                Markdown Export
+                {t.decisions.markdownExport}
               </h2>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => setExportOpen(false)}
-                aria-label="Close export modal"
+                aria-label={t.decisions.closeExportModal}
               >
                 <X />
               </Button>
@@ -612,9 +614,9 @@ export default function DecisionsWorkspace() {
             <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
               <Button variant="outline" onClick={copyMarkdown}>
                 {copied ? <Check /> : <Clipboard />}
-                {copied ? "Copied" : "Copy"}
+                {copied ? t.decisions.copied : t.decisions.copy}
               </Button>
-              <Button onClick={() => setExportOpen(false)}>Close</Button>
+              <Button onClick={() => setExportOpen(false)}>{t.decisions.close}</Button>
             </div>
           </div>
         </div>

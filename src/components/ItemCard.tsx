@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TypeBadge, PriorityBadge, StatusBadge } from "./StatusBadge";
 import type { Item } from "@/lib/schema";
 import Link from "next/link";
+import { useI18n } from "./LanguageProvider";
 
 const COMPLETED_STATUSES = ["done", "completed", "archived", "closed", "resolved"] as const;
 
@@ -31,12 +32,12 @@ type DecisionSessionMeta = {
 
 type DecisionLifecycleStatus = "pending" | "accepted" | "rejected" | "completed" | "archived";
 
-const DECISION_STATUS_SUMMARY: { status: DecisionLifecycleStatus; label: string }[] = [
-  { status: "accepted", label: "Accepted" },
-  { status: "rejected", label: "Rejected" },
-  { status: "pending", label: "Pending" },
-  { status: "completed", label: "Completed" },
-  { status: "archived", label: "Archived" },
+const DECISION_STATUS_SUMMARY: DecisionLifecycleStatus[] = [
+  "accepted",
+  "rejected",
+  "pending",
+  "completed",
+  "archived",
 ];
 
 function normalizeStatusCounts(meta: DecisionSessionMeta): Record<DecisionLifecycleStatus, number> {
@@ -54,7 +55,7 @@ function normalizeStatusCounts(meta: DecisionSessionMeta): Record<DecisionLifecy
     return normalized;
   }
 
-  for (const { status } of DECISION_STATUS_SUMMARY) {
+  for (const status of DECISION_STATUS_SUMMARY) {
     const count = meta.statusCounts[status];
     normalized[status] = typeof count === "number" && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
   }
@@ -90,6 +91,7 @@ function getDecisionSessionMeta(item: Item): DecisionSessionMeta | null {
 }
 
 export default function ItemCard({ item }: ItemCardProps) {
+  const { t } = useI18n();
   const isCompleted = isCompletedStatus(item.status);
   const isUrgent = item.priority === "urgent";
   const decisionSessionMeta = getDecisionSessionMeta(item);
@@ -126,7 +128,7 @@ export default function ItemCard({ item }: ItemCardProps) {
           <StatusBadge status={item.status} />
           {isDecisionWithoutSessionLink && (
             <span className="inline-flex items-center rounded-full border border-muted-foreground/20 bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              No local session link
+              {t.board.noLocalSessionLink}
             </span>
           )}
         </div>
@@ -142,9 +144,7 @@ export default function ItemCard({ item }: ItemCardProps) {
               ? [
                   decisionSessionMeta.projectTitle,
                   decisionSessionMeta.sessionTitle,
-                  ...DECISION_STATUS_SUMMARY.map(
-                    ({ status, label }) => `${label}: ${decisionStatusCounts?.[status] ?? 0}`
-                  ),
+                  ...DECISION_STATUS_SUMMARY.map((status) => `${t.status[status]}: ${decisionStatusCounts?.[status] ?? 0}`),
                 ]
                   .filter(Boolean)
                   .join("\n")
@@ -156,11 +156,11 @@ export default function ItemCard({ item }: ItemCardProps) {
       <div className="px-4 pb-3 flex flex-wrap items-center justify-between gap-1 text-xs text-muted-foreground">
         <div className="flex flex-col gap-0.5">
           <span>
-            By <span className="font-medium text-foreground">{item.createdBy}</span>
+            {t.board.by} <span className="font-medium text-foreground">{item.createdBy}</span>
           </span>
           {item.assignee && (
             <span>
-              Assignee: <span className="font-medium text-foreground">{item.assignee}</span>
+              {t.board.assignee}: <span className="font-medium text-foreground">{item.assignee}</span>
             </span>
           )}
         </div>

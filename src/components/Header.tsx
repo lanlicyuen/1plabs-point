@@ -3,17 +3,47 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
+import { useI18n } from "./LanguageProvider";
+import type { Language } from "@/lib/i18n";
 
 const navItems = [
-  { href: "/", label: "Board", icon: "🗂️" },
-  { href: "/decisions", label: "Decisions", icon: "⚖️" },
-  { href: "/progress", label: "Progress", icon: "📊" },
-  { href: "/blockers", label: "Blockers", icon: "🚧" },
-  { href: "/activity", label: "Activity", icon: "📋" },
-];
+  { href: "/", labelKey: "board", icon: "🗂️" },
+  { href: "/decisions", labelKey: "decisions", icon: "⚖️" },
+  { href: "/progress", labelKey: "progress", icon: "📊" },
+  { href: "/blockers", labelKey: "blockers", icon: "🚧" },
+  { href: "/activity", labelKey: "activity", icon: "📋" },
+] as const;
+
+const languageOptions: Language[] = ["en", "zhHant"];
+
+function LanguageSwitcher() {
+  const { language, setLanguage, t } = useI18n();
+
+  return (
+    <div className="flex items-center rounded-md border border-border p-0.5 text-xs">
+      {languageOptions.map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => setLanguage(option)}
+          className={[
+            "rounded px-2 py-1 transition-colors",
+            language === option
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          ].join(" ")}
+          aria-pressed={language === option}
+        >
+          {t.language[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function Header() {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -28,7 +58,7 @@ export default function Header() {
           <div className="flex items-center gap-1">
             {/* Nav */}
             <nav className="flex items-center gap-1">
-              {navItems.map(({ href, label, icon }) => {
+              {navItems.map(({ href, labelKey, icon }) => {
                 const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
                 return (
                   <Link
@@ -42,14 +72,15 @@ export default function Header() {
                     ].join(" ")}
                   >
                     <span className="text-base leading-none">{icon}</span>
-                    <span className="hidden md:inline">{label}</span>
+                    <span className="hidden md:inline">{t.nav[labelKey]}</span>
                   </Link>
                 );
               })}
             </nav>
 
             {/* Theme toggle */}
-            <div className="ml-2 border-l border-border pl-2">
+            <div className="ml-2 flex items-center gap-2 border-l border-border pl-2">
+              <LanguageSwitcher />
               <ThemeToggle />
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ItemCard from "./ItemCard";
 import type { Item, ItemType } from "@/lib/schema";
+import { useI18n } from "./LanguageProvider";
 
 const COMPLETED_STATUSES = ["done", "completed", "archived", "closed", "resolved"] as const;
 
@@ -11,7 +12,6 @@ function isCompletedStatus(status: string): boolean {
 }
 
 interface BoardColumnProps {
-  title: string;
   type: ItemType;
   items: Item[];
   icon?: string;
@@ -28,8 +28,9 @@ const columnColors: Record<ItemType, string> = {
   incident: "border-t-rose-500",
 };
 
-export default function BoardColumn({ title, type, items, icon }: BoardColumnProps) {
+export default function BoardColumn({ type, items, icon }: BoardColumnProps) {
   const [completedExpanded, setCompletedExpanded] = useState(false);
+  const { t } = useI18n();
 
   const filteredItems = items.filter(
     (i) => i.status !== "archived" && i.status !== "deleted"
@@ -46,7 +47,7 @@ export default function BoardColumn({ title, type, items, icon }: BoardColumnPro
       >
         <h2 className="font-semibold text-sm flex items-center gap-1.5">
           {icon && <span>{icon}</span>}
-          {title}
+          {t.board.columns[type]}
         </h2>
         <span className="text-xs text-muted-foreground bg-background rounded-full px-2 py-0.5 border">
           {filteredItems.length}
@@ -57,7 +58,7 @@ export default function BoardColumn({ title, type, items, icon }: BoardColumnPro
       <div className="flex flex-col gap-2">
         {/* Active items */}
         {activeItems.length === 0 && completedItems.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">No items</p>
+          <p className="text-xs text-muted-foreground text-center py-6">{t.board.noItems}</p>
         ) : (
           activeItems.map((item) => <ItemCard key={item.id} item={item} />)
         )}
@@ -77,7 +78,7 @@ export default function BoardColumn({ title, type, items, icon }: BoardColumnPro
                 ▶
               </span>
               <span>
-                Completed ({completedItems.length})
+                {t.board.completed} ({completedItems.length})
               </span>
             </button>
 

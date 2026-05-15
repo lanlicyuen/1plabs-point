@@ -213,25 +213,21 @@ export default function DemoPage() {
       {/* Kanban board */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-10">
         <BoardColumn
-          title="Decisions"
           type="decision"
           items={activeItems}
           icon="⚖️"
         />
         <BoardColumn
-          title="Progress"
           type="progress"
           items={activeItems}
           icon="📊"
         />
         <BoardColumn
-          title="Blockers"
           type="blocker"
           items={activeItems}
           icon="🚧"
         />
         <BoardColumn
-          title="Announcements"
           type="announcement"
           items={activeItems}
           icon="📢"
