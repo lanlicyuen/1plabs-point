@@ -30,7 +30,7 @@ export const pgItems = pgTable("items", {
   title: varchar("title", { length: 200 }).notNull(),
   content: text("content"),
   priority: varchar("priority", { length: 10 }).default("normal"), // urgent / high / normal / low
-  status: varchar("status", { length: 20 }).default("pending"), // pending / active / done / archived / deleted
+  status: varchar("status", { length: 20 }).default("pending"), // pending / active / accepted / rejected / done / completed / archived / deleted
   assignee: varchar("assignee", { length: 50 }),
   createdBy: varchar("created_by", { length: 50 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(
@@ -114,7 +114,7 @@ export const sqliteActivityLog = sqliteTable("activity_log", {
 
 export type ItemType = "task" | "decision" | "progress" | "blocker" | "announcement" | "upgrade" | "deploy" | "incident";
 export type ItemPriority = "urgent" | "high" | "normal" | "low";
-export type ItemStatus = "pending" | "active" | "done" | "archived" | "deleted";
+export type ItemStatus = "pending" | "active" | "accepted" | "rejected" | "done" | "completed" | "archived" | "deleted";
 export type ActionType = "created" | "updated" | "status_changed" | "archived" | "deleted";
 
 export interface Item {

@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type DecisionStatus = "pending" | "accepted" | "rejected";
+type DecisionStatus = "pending" | "accepted" | "rejected" | "completed" | "archived";
 
 type DecisionItem = {
   id: string;
@@ -35,6 +35,21 @@ type SavedSession = {
 };
 
 const STORAGE_KEY = "point-decisions-v2-sessions";
+const DECISION_STATUSES = ["pending", "accepted", "rejected", "completed", "archived"] as const;
+const STATUS_LABELS: Record<DecisionStatus, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  rejected: "Rejected",
+  completed: "Completed",
+  archived: "Archived",
+};
+const STATUS_SELECT_CLASSES: Record<DecisionStatus, string> = {
+  pending: "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-200",
+  accepted: "border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950/30 dark:text-green-200",
+  rejected: "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200",
+  completed: "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200",
+  archived: "border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300",
+};
 const DECISION_VERBS =
   /(accept|adopt|allow|approve|build|cancel|choose|defer|deny|disable|enable|launch|migrate|pause|reject|remove|require|ship|start|stop|support|use|采用|保留|关闭|决定|启用|取消|否决|启动|开发|拒绝|接受|支持|暂停|改为|新增|确定|禁用|移除|采用|使用|选择|避免|允许|上线|暂不|需要)/i;
 
@@ -128,10 +143,53 @@ function parseSession(input: string): { sessionNotes: string; decisions: Decisio
   };
 }
 
-function getStatusLabel(status: DecisionStatus) {
-  if (status === "accepted") return "accepted";
-  if (status === "rejected") return "rejected";
+function normalizeDecisionStatus(status: unknown): DecisionStatus {
+  if (typeof status !== "string") return "pending";
+  if ((DECISION_STATUSES as readonly string[]).includes(status)) return status as DecisionStatus;
+  if (status === "active") return "pending";
+  if (status === "done" || status === "closed" || status === "resolved") return "completed";
   return "pending";
+}
+
+function normalizeDecision(item: Partial<DecisionItem>): DecisionItem | null {
+  if (typeof item.text !== "string" || !item.text.trim()) return null;
+
+  return {
+    id: typeof item.id === "string" && item.id.trim() ? item.id : createId(),
+    text: item.text,
+    status: normalizeDecisionStatus(item.status),
+  };
+}
+
+function normalizeSession(session: Partial<SavedSession>): SavedSession | null {
+  if (typeof session.id !== "string" || !session.id.trim()) return null;
+
+  const rawInput = typeof session.rawInput === "string" ? session.rawInput : "";
+  const parsed = parseSession(rawInput);
+  const decisions = Array.isArray(session.decisions)
+    ? session.decisions.map((item) => normalizeDecision(item)).filter((item): item is DecisionItem => Boolean(item))
+    : parsed.decisions;
+
+  return {
+    id: session.id,
+    projectTitle: typeof session.projectTitle === "string" ? session.projectTitle : "",
+    sessionTitle: typeof session.sessionTitle === "string" ? session.sessionTitle : "",
+    rawInput,
+    sessionNotes: typeof session.sessionNotes === "string" ? session.sessionNotes : parsed.sessionNotes,
+    exportedMarkdown: typeof session.exportedMarkdown === "string" ? session.exportedMarkdown : "",
+    decisions,
+    createdAt: typeof session.createdAt === "string" ? session.createdAt : new Date().toISOString(),
+  };
+}
+
+function getStatusCounts(decisions: DecisionItem[]) {
+  return decisions.reduce<Record<DecisionStatus, number>>(
+    (counts, item) => {
+      counts[normalizeDecisionStatus(item.status)] += 1;
+      return counts;
+    },
+    { pending: 0, accepted: 0, rejected: 0, completed: 0, archived: 0 }
+  );
 }
 
 function buildMarkdown(
@@ -140,6 +198,7 @@ function buildMarkdown(
   sessionNotes: string,
   decisions: DecisionItem[]
 ) {
+  const statusCounts = getStatusCounts(decisions);
   const lines = [
     `# ${projectTitle || "Untitled Project"}`,
     "",
@@ -148,12 +207,20 @@ function buildMarkdown(
     "### Notes",
     sessionNotes.trim() || "_No notes._",
     "",
+    "### Status Summary",
+    "",
+    `- Pending: ${statusCounts.pending}`,
+    `- Accepted: ${statusCounts.accepted}`,
+    `- Rejected: ${statusCounts.rejected}`,
+    `- Completed: ${statusCounts.completed}`,
+    `- Archived: ${statusCounts.archived}`,
+    "",
     "### Decisions",
     "",
     "| Status | Decision |",
     "| --- | --- |",
     ...decisions.map((item) => {
-      const label = getStatusLabel(item.status);
+      const label = STATUS_LABELS[normalizeDecisionStatus(item.status)];
       return `| ${label} | ${item.text.replace(/\|/g, "\\|")} |`;
     }),
   ];
@@ -166,7 +233,9 @@ function loadSessions(): SavedSession[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed)
+      ? parsed.map((session) => normalizeSession(session)).filter((session): session is SavedSession => Boolean(session))
+      : [];
   } catch {
     return [];
   }
@@ -236,6 +305,7 @@ export default function DecisionsWorkspace() {
   }
 
   async function syncBoardCard(session: SavedSession) {
+    const statusCounts = getStatusCounts(session.decisions);
     const response = await fetch("/api/decision-session-board-card", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -244,6 +314,7 @@ export default function DecisionsWorkspace() {
         projectTitle: session.projectTitle,
         sessionTitle: session.sessionTitle,
         decisionCount: session.decisions.length,
+        statusCounts,
       }),
     });
 
@@ -265,7 +336,7 @@ export default function DecisionsWorkspace() {
       rawInput,
       sessionNotes,
       exportedMarkdown,
-      decisions,
+      decisions: decisions.map((item) => ({ ...item, status: normalizeDecisionStatus(item.status) })),
       createdAt: new Date().toISOString(),
     };
 
@@ -285,12 +356,15 @@ export default function DecisionsWorkspace() {
   }
 
   function restoreSession(session: SavedSession) {
+    const normalizedSession = normalizeSession(session);
+    if (!normalizedSession) return;
+
     setActiveSessionId(session.id);
-    setProjectTitle(session.projectTitle);
-    setSessionTitle(session.sessionTitle);
-    setRawInput(session.rawInput);
-    setSessionNotes(session.sessionNotes ?? parseSession(session.rawInput).sessionNotes);
-    setDecisions(session.decisions);
+    setProjectTitle(normalizedSession.projectTitle);
+    setSessionTitle(normalizedSession.sessionTitle);
+    setRawInput(normalizedSession.rawInput);
+    setSessionNotes(normalizedSession.sessionNotes ?? parseSession(normalizedSession.rawInput).sessionNotes);
+    setDecisions(normalizedSession.decisions);
     setSaveMessage("");
     setExportOpen(false);
   }
@@ -465,7 +539,7 @@ export default function DecisionsWorkspace() {
                       <tr key={item.id} className="border-t border-border">
                         <td className="px-3 py-1.5 align-top">
                           <select
-                            className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                            className={`h-7 w-full rounded-md border px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 ${STATUS_SELECT_CLASSES[item.status]}`}
                             value={item.status}
                             onChange={(event) =>
                               updateDecision(item.id, {
@@ -473,9 +547,11 @@ export default function DecisionsWorkspace() {
                               })
                             }
                           >
-                            <option value="pending">pending</option>
-                            <option value="accepted">accepted</option>
-                            <option value="rejected">rejected</option>
+                            {DECISION_STATUSES.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td className="px-3 py-1.5 align-top">

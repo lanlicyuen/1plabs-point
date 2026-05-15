@@ -11,11 +11,47 @@ type DecisionBoardCardRequest = {
   projectTitle?: string;
   sessionTitle?: string;
   decisionCount?: number;
+  statusCounts?: Partial<Record<DecisionLifecycleStatus, number>>;
 };
+
+type DecisionLifecycleStatus = "pending" | "accepted" | "rejected" | "completed" | "archived";
+
+const DECISION_LIFECYCLE_STATUSES: DecisionLifecycleStatus[] = [
+  "pending",
+  "accepted",
+  "rejected",
+  "completed",
+  "archived",
+];
 
 function currentDbTimestamp(): Date | string {
   const now = new Date();
   return driver === "postgres" ? now : now.toISOString();
+}
+
+function normalizeStatusCounts(
+  statusCounts: DecisionBoardCardRequest["statusCounts"],
+  decisionCount: number
+): Record<DecisionLifecycleStatus, number> {
+  const normalized: Record<DecisionLifecycleStatus, number> = {
+    pending: 0,
+    accepted: 0,
+    rejected: 0,
+    completed: 0,
+    archived: 0,
+  };
+
+  if (!statusCounts || typeof statusCounts !== "object") {
+    normalized.pending = decisionCount;
+    return normalized;
+  }
+
+  for (const status of DECISION_LIFECYCLE_STATUSES) {
+    const count = statusCounts[status];
+    normalized[status] = typeof count === "number" && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  }
+
+  return normalized;
 }
 
 function parseDecisionSessionId(content: string | null): string | null {
@@ -52,11 +88,13 @@ export async function POST(req: NextRequest) {
     const { items, activityLog } = getTables();
     const now = currentDbTimestamp();
     const title = `Decision Session: ${sessionTitle}`;
+    const decisionCount = body.decisionCount ?? 0;
     const content = JSON.stringify({
       decisionSessionId,
       projectTitle,
       sessionTitle,
-      decisionCount: body.decisionCount ?? 0,
+      decisionCount,
+      statusCounts: normalizeStatusCounts(body.statusCounts, decisionCount),
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

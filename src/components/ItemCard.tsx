@@ -26,7 +26,41 @@ type DecisionSessionMeta = {
   projectTitle?: string;
   sessionTitle?: string;
   decisionCount?: number;
+  statusCounts?: Partial<Record<DecisionLifecycleStatus, number>>;
 };
+
+type DecisionLifecycleStatus = "pending" | "accepted" | "rejected" | "completed" | "archived";
+
+const DECISION_STATUS_SUMMARY: { status: DecisionLifecycleStatus; label: string }[] = [
+  { status: "accepted", label: "Accepted" },
+  { status: "rejected", label: "Rejected" },
+  { status: "pending", label: "Pending" },
+  { status: "completed", label: "Completed" },
+  { status: "archived", label: "Archived" },
+];
+
+function normalizeStatusCounts(meta: DecisionSessionMeta): Record<DecisionLifecycleStatus, number> {
+  const fallbackCount = typeof meta.decisionCount === "number" ? meta.decisionCount : 0;
+  const normalized: Record<DecisionLifecycleStatus, number> = {
+    pending: 0,
+    accepted: 0,
+    rejected: 0,
+    completed: 0,
+    archived: 0,
+  };
+
+  if (!meta.statusCounts || typeof meta.statusCounts !== "object") {
+    normalized.pending = fallbackCount;
+    return normalized;
+  }
+
+  for (const { status } of DECISION_STATUS_SUMMARY) {
+    const count = meta.statusCounts[status];
+    normalized[status] = typeof count === "number" && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  }
+
+  return normalized;
+}
 
 function getDecisionSessionMeta(item: Item): DecisionSessionMeta | null {
   if (item.type !== "decision" || !item.content) return null;
@@ -39,6 +73,7 @@ function getDecisionSessionMeta(item: Item): DecisionSessionMeta | null {
         projectTitle: parsed.projectTitle,
         sessionTitle: parsed.sessionTitle,
         decisionCount: parsed.decisionCount,
+        statusCounts: parsed.statusCounts,
       };
     }
   } catch {
@@ -62,6 +97,7 @@ export default function ItemCard({ item }: ItemCardProps) {
   const decisionHref = decisionSessionMeta
     ? `/decisions?session=${encodeURIComponent(decisionSessionMeta.decisionSessionId)}`
     : null;
+  const decisionStatusCounts = decisionSessionMeta ? normalizeStatusCounts(decisionSessionMeta) : null;
 
   const card = (
     <Card
@@ -106,9 +142,9 @@ export default function ItemCard({ item }: ItemCardProps) {
               ? [
                   decisionSessionMeta.projectTitle,
                   decisionSessionMeta.sessionTitle,
-                  typeof decisionSessionMeta.decisionCount === "number"
-                    ? `${decisionSessionMeta.decisionCount} decisions`
-                    : null,
+                  ...DECISION_STATUS_SUMMARY.map(
+                    ({ status, label }) => `${label}: ${decisionStatusCounts?.[status] ?? 0}`
+                  ),
                 ]
                   .filter(Boolean)
                   .join("\n")
