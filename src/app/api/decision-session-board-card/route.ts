@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { db, getTables } from "@/lib/db";
+import { db, driver, getTables } from "@/lib/db";
 import { isSessionValid } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,11 @@ type DecisionBoardCardRequest = {
   sessionTitle?: string;
   decisionCount?: number;
 };
+
+function currentDbTimestamp(): Date | string {
+  const now = new Date();
+  return driver === "postgres" ? now : now.toISOString();
+}
 
 function parseDecisionSessionId(content: string | null): string | null {
   if (!content) return null;
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { items, activityLog } = getTables();
-    const now = new Date().toISOString();
+    const now = currentDbTimestamp();
     const title = `Decision Session: ${sessionTitle}`;
     const content = JSON.stringify({
       decisionSessionId,
